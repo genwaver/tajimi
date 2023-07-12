@@ -10,5 +10,9 @@
   },
   "devDependencies": {
     "vite": "^4.4.0"
+  },
+  "dependencies": {
+    "mathjs": "^11.8.2",
+    "paper": "^0.12.17"
   }
 }
