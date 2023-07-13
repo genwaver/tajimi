@@ -12,6 +12,7 @@
     "vite": "^4.4.0"
   },
   "dependencies": {
+    "chroma-js": "^2.4.2",
     "mathjs": "^11.8.2",
     "paper": "^0.12.17"
   }
