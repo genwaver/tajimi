@@ -16,9 +16,9 @@ const settings = {
 const palette = {
   background: 'white',
   stroke: '#382B80',
-  tile1: '#FDF7C3',
+  tile1: '#B2A4FF',
   tile2: '#B2A4FF',
-  window: '#FFDEB4'
+  window: '#FDF7C3'
 }
 
 const generateBackground = (view) => {
@@ -45,8 +45,8 @@ const generateTiles = (start, size) => {
       const xTile = col * colSize
       const yTile = row * rowSize
       const tilePoint = new paper.Point(xTile, yTile).add(start)
-      const color1 = math.pickRandom([palette.tile1, palette.tile2])
-      const color2 = color1 === palette.tile1 ? palette.tile2 : palette.tile1
+      const color1 = chroma(palette.tile1).brighten(math.random(0.0, 0.5))
+      const color2 = chroma(color1).saturate(math.random(1.0, 10.0)).hex()
 
       const tile = new paper.Path.Rectangle({
         point: tilePoint,
@@ -232,10 +232,9 @@ window.onload = () => {
     buildings.forEach(building => {
       building.tiles.forEach((tile, index) => {
 
-        let delay = building.body.bounds.center.getDistance(tile.rectangle.bounds.center) * 5
+        let delay = index * 7.5
         let animationFrame = (globalFrame + delay) % settings.tileAnimation
         let progress = scale(animationFrame, 0.0, settings.tileAnimation, 0.0, 1.0)
-        progress = easeInOutCubic(progress)
 
         const color = chroma.mix(tile.currentColor, tile.nextColor, progress)
         tile.rectangle.fillColor = color.hex()
