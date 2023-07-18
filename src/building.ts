@@ -6,7 +6,8 @@ import chroma from 'chroma-js'
 export interface Palette {
   backgroundColor: string,
   strokeColor: string
-  tileColor: string
+  tileColorA: string
+  tileColorB: string
   windowColor: string
 }
 
@@ -49,11 +50,13 @@ export interface Building {
 
 export interface Tajimi {
   group: paper.Group
+  background: paper.Path
+  strokeBackground: paper.Path
   buildings: Array<Building>
 }
 
 export const drawTiles = (point: paper.Point, size: paper.Size, settings: BuildingSettings): Array<BuildingTile> => {
-  const tileCount = math.randomInt(5, 8)
+  const tileCount = math.randomInt(8, 12)
   const tileSize = size.width / tileCount
 
   const cols = Math.ceil(size.width / tileSize)
@@ -63,8 +66,8 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
   const tiles: Array<BuildingTile> = []
 
   grid.tiles.forEach((tile) => {
-      const currentColor = chroma(settings.tileColor).brighten(math.random(0.0, 0.5))
-      const nextColor = chroma(currentColor).saturate(math.random(1.0, 10.0))
+      const currentColor = chroma(settings.tileColorA).brighten(math.random(0.0, 0.5))
+      const nextColor = chroma(settings.tileColorB).brighten(math.random(0.0, 0.5))
 
       tile.path.fillColor = new paper.Color(currentColor.hex())
       tile.path.strokeColor = new paper.Color(currentColor.hex())
@@ -256,6 +259,8 @@ export const drawTajimi = (point: paper.Point, size: paper.Size, settings: Build
 
   return {
     group: tajimi,
+    background,
+    strokeBackground,
     buildings
   }
 }
