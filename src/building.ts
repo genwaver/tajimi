@@ -4,6 +4,7 @@ import * as patterns from './patterns'
 import chroma from 'chroma-js'
 
 export interface Palette {
+  backgroundColor: string,
   strokeColor: string
   tileColor: string
   windowColor: string
@@ -21,7 +22,10 @@ export interface BuildingSettings extends Palette {
   windowFrameOffsetFactor: number,
   windowMinFrameOffset: number,
   windowGridOffsetFactor: number,
-  windowGridCols: number
+  windowGridCols: number,
+  postalFrameRadius: number,
+  postalStrokeWidth: number,
+  strokeWidth: number
 }
 
 export interface BuildingTile extends patterns.Tile {
@@ -43,6 +47,11 @@ export interface Building {
   windows: Array<BuildingWindow>
 }
 
+export interface Tajimi {
+  group: paper.Group
+  buildings: Array<Building>
+}
+
 export const drawTiles = (point: paper.Point, size: paper.Size, settings: BuildingSettings): Array<BuildingTile> => {
   const tileCount = math.randomInt(5, 8)
   const tileSize = size.width / tileCount
@@ -58,6 +67,7 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
       const nextColor = chroma(currentColor).saturate(math.random(1.0, 10.0))
 
       tile.path.fillColor = new paper.Color(currentColor.hex())
+      tile.path.strokeColor = new paper.Color(currentColor.hex())
 
       tiles.push({
         ...tile,
@@ -73,7 +83,7 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
   const frame = new paper.Path.Rectangle({
     point: point,
     size: size,
-    strokeWidth: 1.5,
+    strokeWidth: settings.strokeWidth,
     strokeColor: settings.strokeColor,
     fillColor: 'white',
     radius: settings.windowRadius
@@ -89,7 +99,7 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
   const glass = new paper.Path.Rectangle({
     point: glassPoint,
     size: glassSize,
-    strokeWidth: 1.5,
+    strokeWidth: settings.strokeWidth,
     strokeColor: settings.strokeColor,
     fillColor: settings.windowColor,
     radius: settings.windowRadius
@@ -101,6 +111,7 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
   ])
 
   division.strokeColor = new paper.Color(settings.strokeColor)
+  division.strokeWidth = settings.strokeWidth
 
   return {
     group: new paper.Group([frame, glass, division]),
@@ -147,7 +158,8 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
   const body = new paper.Path.Rectangle({
     point,
     size,
-    strokeColor: settings.strokeColor
+    strokeColor: settings.strokeColor,
+    strokeWidth: settings.strokeWidth
   })
 
   const windows = drawWindowGrid(point, size, settings)
@@ -165,12 +177,13 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
   }
 }
 
-export const drawTajimi = (size: paper.Size, settings: BuildingSettings) => {
+export const drawTajimi = (point: paper.Point, size: paper.Size, settings: BuildingSettings) => {
   const buildings = []
   const minimumBuildingWidth = settings.buildingWidthMinimumFactor * paper.view.size.width
   const minimumAvailableSpace = settings.buildingWidthFactorThreshold * paper.view.size.width
+
   let availableWidth = size.width + size.width * 0.2
-  let currentX = -size.width * 0.2 * 0.5
+  let currentX = point.x -size.width * 0.2 * 0.5
 
   while(availableWidth > minimumAvailableSpace) {
     const buildingHeight = math.random(
@@ -190,7 +203,7 @@ export const drawTajimi = (size: paper.Size, settings: BuildingSettings) => {
     const buildingOffset = math.random(-20, 20)
     const buildingX = currentX + buildingOffset
 
-    const buildingPoint = new paper.Point(buildingX, size.height - buildingHeight)
+    const buildingPoint = new paper.Point(buildingX, point.y + (size.height - buildingHeight))
     const buildingSize = new paper.Size(buildingWidth, buildingHeight)
 
     const building = drawBuilding(buildingPoint, buildingSize, settings)
@@ -204,7 +217,7 @@ export const drawTajimi = (size: paper.Size, settings: BuildingSettings) => {
     settings.buildingHeightMinFactor * size.height,
     settings.buildingHeightMaxFactor * size.height
   )
-  const buildingPoint = new paper.Point(currentX, size.height - buildingHeight)
+  const buildingPoint = new paper.Point(currentX, point.y + (size.height - buildingHeight))
   const buildingSize = new paper.Size(availableWidth, buildingHeight)
   const lastBuilding = drawBuilding(buildingPoint, buildingSize, settings)
   buildings.push(lastBuilding)
@@ -212,5 +225,37 @@ export const drawTajimi = (size: paper.Size, settings: BuildingSettings) => {
   buildings.sort((a, b) => b.body.bounds.area - a.body.bounds.area)
   buildings.forEach(b => b.group.sendToBack())
 
-  return buildings
+  const visibleArea = new paper.Path.Rectangle({
+    point: point.add(settings.strokeWidth * 0.5),
+    size: size.subtract(settings.strokeWidth * 2.0 * 0.5),
+    strokeWidth: settings.strokeWidth,
+    radius: 4.0
+  })
+
+  const background = new paper.Path.Rectangle({
+    point,
+    size,
+    fillColor: settings.backgroundColor,
+    radius: 4.0
+  })
+
+  const strokeBackground = new paper.Path.Rectangle({
+    point: point.add(settings.strokeWidth),
+    size: size.subtract(settings.strokeWidth * 2.0),
+    strokeColor: settings.strokeColor,
+    strokeWidth: settings.strokeWidth,
+    radius: 4.0
+  })
+
+  const tajimi = new paper.Group()
+  visibleArea.clipMask = true
+  tajimi.addChild(visibleArea)
+  tajimi.addChild(background)
+  buildings.forEach(b => tajimi.addChild(b.group))
+  tajimi.addChild(strokeBackground)
+
+  return {
+    group: tajimi,
+    buildings
+  }
 }
