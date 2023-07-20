@@ -11,3 +11,8 @@ html, body {
   align-items: center;
   justify-content: center;
 }
+
+.hidden {
+  position: fixed;
+  z-index: -999;
+}
