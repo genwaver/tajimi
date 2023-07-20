@@ -4,7 +4,12 @@ import * as math from 'mathjs'
 import chroma from 'chroma-js'
 import * as building from './building'
 import GUI from 'lil-gui'
-import CCapture from 'ccapture.js-npmfixed'
+import { CanvasCapture } from 'canvas-capture'
+
+interface Painting {
+  canvas: HTMLCanvasElement,
+  preview: HTMLCanvasElement
+}
 
 /**
  * Postal Settings
@@ -19,6 +24,8 @@ const palette = {
 }
 
 const settings = {
+  previewWidth: 540,
+  previewHeight: 540,
   postalWidth: 540,
   postalHeight: 540,
   postalFrameOffsetFactor: 0.9,
@@ -39,6 +46,7 @@ const settings = {
   tileAnimation: 80.0,
   strokeWidth: 1.5,
   delayOffset: 0.5,
+  exportScale: 2.0,
   updateTajimi: () => {
     if(postal) {
       postal.group.remove()
@@ -77,6 +85,22 @@ gui.addColor(settings, 'tileColorB').onChange(() => {
 })
 
 gui.add(settings, 'delayOffset').min(0).max(100.0).step(0.01)
+gui.add(settings, 'exportScale').min(1.0).max(4.0).step(1.0).onChange(() => {
+  if (painting && postal) {
+    const canvasWidth = settings.postalWidth * settings.exportScale
+    const canvasHeight = settings.postalHeight * settings.exportScale
+    paper.view.viewSize = new paper.Size(canvasWidth, canvasHeight)
+
+    postal.group.remove()
+    postal = drawTajimiPostal(paper.view, settings)
+
+    painting.canvas.style.width = `${canvasWidth}px`
+    painting.canvas.style.height = `${canvasHeight}px`
+    painting.canvas.width = canvasWidth
+    painting.canvas.height = canvasHeight
+  }
+})
+
 gui.add(settings, 'updateTajimi')
 gui.add(settings, 'exportSvg')
 gui.add(settings, 'record')
@@ -152,49 +176,60 @@ const drawTajimiPostal = (view: paper.View, settings: any): TajimiPostal => {
  */
 
 let postal: TajimiPostal | undefined = undefined
+let painting: Painting | undefined = undefined
 
 window.onload = () => {
-  const previewCanvasSize = 540
-  const exportCanvasSize = 1080
 
-  // preview canvas
-  const previewCanvas: HTMLCanvasElement = document.getElementById('preview')
-  const previewCtx = previewCanvas.getContext('2d')
-  previewCanvas.style.width = `${previewCanvasSize}px`
-  previewCanvas.style.height = `${previewCanvasSize}px`
-  previewCanvas.width = previewCanvasSize
-  previewCanvas.height = previewCanvasSize
-
-  // Setup canvas for preview
-  const canvas: HTMLCanvasElement = document.getElementById('painting')
-  const ctx = canvas.getContext('2d')
-  canvas.style.width = `${exportCanvasSize}px`
-  canvas.style.height = `${exportCanvasSize}px`
-  canvas.width = exportCanvasSize
-  canvas.height = exportCanvasSize
-  paper.setup(canvas)
-
+  painting = setupPainting(settings)
   postal = drawTajimiPostal(paper.view, settings)
 
   paper.view.onFrame = (event: any) => {
     let globalFrame = event.count
 
-    updateSettings(postal, settings)
-    animateTiles(globalFrame, postal.tajimi.buildings)
+    updateSettings(postal!, settings)
+    animateTiles(globalFrame, postal!.tajimi.buildings)
+    drawPreview(painting!, settings)
 
-    // Draw preview
-    previewCtx.clearRect(0, 0, previewCanvasSize, previewCanvasSize)
-    previewCtx.drawImage(canvas, 0, 0, exportCanvasSize, exportCanvasSize, 0, 0, previewCanvasSize, previewCanvasSize)
-
-    checkRecording(canvas, globalFrame)
+    checkRecording(painting!.canvas, globalFrame)
   }
 }
+
+const setupPainting = (settings: any) : Painting => {
+  const preview: HTMLCanvasElement = document.getElementById('preview')
+  preview.style.width = `${settings.previewWidth}px`
+  preview.style.height = `${settings.previewHeight}px`
+  preview.width = settings.previewWidth
+  preview.height = settings.previewHeight
+
+  const canvasWidth = settings.postalWidth * settings.exportScale
+  const canvasHeight = settings.postalHeight * settings.exportScale
+
+  const canvas: HTMLCanvasElement = document.getElementById('painting')
+  canvas.style.width = `${canvasWidth}px`
+  canvas.style.height = `${canvasHeight}px`
+  canvas.width = canvasWidth
+  canvas.height = canvasHeight
+
+  paper.setup(canvas)
+
+  return {
+    preview,
+    canvas
+  }
+}
+
+const drawPreview = ({preview, canvas}: Painting, settings: any) => {
+  const ctx = preview.getContext('2d')
+  const canvasWidth = settings.postalWidth * settings.exportScale
+  const canvasHeight = settings.postalHeight * settings.exportScale
+  ctx?.drawImage(canvas, 0, 0, canvasWidth, canvasHeight, 0, 0, settings.previewWidth, settings.previewHeight)
+}
+
+
 
 /**
  * Recording logic
  */
-
-let capturer = new CCapture({ format: 'png', framerate: 30, verbose: true, quality: 100 })
 let recordingRequested = false
 let isRecording = false
 
@@ -207,16 +242,18 @@ const checkRecording = (canvas: HTMLCanvasElement, frame: number) => {
   }
 
   if(isRecording) {
-    if (animationFrame === 0)
-      capturer.start()
+    if (animationFrame === 0) {
+      CanvasCapture.init(canvas)
+      CanvasCapture.setVerbose(true)
+      CanvasCapture.beginGIFRecord()
+    }
     
-    if (animationFrame < settings.tileAnimation)
-      capturer.capture(canvas)
+    if (animationFrame < settings.tileAnimation) {
+      CanvasCapture.recordFrame()
+    }
     
     if (animationFrame === settings.tileAnimation - 1) {
-      capturer.capture(canvas)
-      capturer.stop()
-      capturer.save()
+      CanvasCapture.stopRecord()
     }
 
 
@@ -234,6 +271,7 @@ const updateSettings = (postal: TajimiPostal, settings: any) => {
   postal.frame.strokeColor = settings.strokeColor
   postal.tajimi.strokeBackground.strokeColor = settings.strokeColor
   postal.tajimi.buildings.forEach(b => b.body.strokeColor = settings.strokeColor)
+  postal.tajimi.buildings.forEach(b => b.tiles.forEach(t => t.path.strokeColor = settings.strokeColor))
   postal.tajimi.buildings.forEach(b => b.windows.forEach((w) => {
     w.frame.strokeColor = settings.strokeColor
     w.glass.strokeColor = settings.strokeColor
