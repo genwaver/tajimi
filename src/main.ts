@@ -154,15 +154,24 @@ const drawTajimiPostal = (view: paper.View, settings: any): TajimiPostal => {
 let postal: TajimiPostal | undefined = undefined
 
 window.onload = () => {
-  const scale = 2.0
+  const previewCanvasSize = 540
+  const exportCanvasSize = 1080
+
+  // preview canvas
+  const previewCanvas: HTMLCanvasElement = document.getElementById('preview')
+  const previewCtx = previewCanvas.getContext('2d')
+  previewCanvas.style.width = `${previewCanvasSize}px`
+  previewCanvas.style.height = `${previewCanvasSize}px`
+  previewCanvas.width = previewCanvasSize
+  previewCanvas.height = previewCanvasSize
+
+  // Setup canvas for preview
   const canvas: HTMLCanvasElement = document.getElementById('painting')
   const ctx = canvas.getContext('2d')
-  canvas.style.width = `540px`
-  canvas.style.height = `540px`
-  canvas.width = 540 * scale
-  canvas.height = 540 * scale
-  ctx?.scale(scale, scale)
-
+  canvas.style.width = `${exportCanvasSize}px`
+  canvas.style.height = `${exportCanvasSize}px`
+  canvas.width = exportCanvasSize
+  canvas.height = exportCanvasSize
   paper.setup(canvas)
 
   postal = drawTajimiPostal(paper.view, settings)
@@ -172,6 +181,11 @@ window.onload = () => {
 
     updateSettings(postal, settings)
     animateTiles(globalFrame, postal.tajimi.buildings)
+
+    // Draw preview
+    previewCtx.clearRect(0, 0, previewCanvasSize, previewCanvasSize)
+    previewCtx.drawImage(canvas, 0, 0, exportCanvasSize, exportCanvasSize, 0, 0, previewCanvasSize, previewCanvasSize)
+
     checkRecording(canvas, globalFrame)
   }
 }
@@ -180,7 +194,7 @@ window.onload = () => {
  * Recording logic
  */
 
-let capturer = new CCapture({ format: 'png', framerate: 30, verbose: true })
+let capturer = new CCapture({ format: 'png', framerate: 30, verbose: true, quality: 100 })
 let recordingRequested = false
 let isRecording = false
 
