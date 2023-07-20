@@ -63,7 +63,7 @@ gui.addColor(settings, 'tileColorB').onChange(() => {
   }
 })
 
-gui.add(settings, 'delayOffset').min(0).max(10.0).step(0.01)
+gui.add(settings, 'delayOffset').min(0).max(100.0).step(0.01)
 gui.add(settings, 'updateTajimi')
 
 const updateTileColors = (postal: TajimiPostal) => {
@@ -175,18 +175,23 @@ const animateTiles = (globalFrame: number, buildings: Array<building.Building>) 
   buildings.forEach(building => {
     building.tiles.forEach((tile, index) => {
 
-      let delay = tile.path.bounds.center.getDistance(new paper.Point(building.body.position.x, building.body.position.y)) * settings.delayOffset
+      let buildingPoint = new paper.Point(
+        scale(tile.point.x, building.body.bounds.topLeft.x, building.body.bounds.topRight.x, -0.5, 0.5),
+        scale(tile.point.y, building.body.bounds.topLeft.y, building.body.bounds.bottomLeft.y, -0.5, 0.5)
+      )
+
+
+      let delay = Math.sin((buildingPoint.x + buildingPoint.y) * Math.PI) * settings.delayOffset 
+      delay += buildingPoint.length * 100.0
+      delay += building.body.bounds.center.x * 20.0
+
       let animationFrame = (globalFrame + delay) % settings.tileAnimation
       let progress = scale(animationFrame, 0.0, settings.tileAnimation, 0.0, 1.0)
+      progress = Math.sin(progress * Math.PI)
 
       const color = chroma.mix(tile.currentColor, tile.nextColor, progress).hex()
       tile.path.fillColor = new paper.Color(color)
 
-      if (animationFrame >= settings.tileAnimation - 1) {
-        const nextColor = tile.currentColor
-        tile.currentColor = tile.nextColor
-        tile.nextColor = nextColor
-      }
     })
   })
 }

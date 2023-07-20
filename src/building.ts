@@ -82,7 +82,7 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
   return tiles
 }
 
-export const drawWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings): BuildingWindow => {
+export const drawWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings, addDivisor = true): BuildingWindow => {
   const frame = new paper.Path.Rectangle({
     point: point,
     size: size,
@@ -114,7 +114,7 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
   ])
 
   division.strokeColor = new paper.Color(settings.strokeColor)
-  division.strokeWidth = settings.strokeWidth
+  division.strokeWidth = addDivisor ? settings.strokeWidth : 0.0
 
   return {
     group: new paper.Group([frame, glass, division]),
@@ -123,6 +123,23 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
     division
   }
 }
+
+const generateWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings) => {
+  const windowSettings = math.pickRandom([
+    {scale: {x: 1.0, y: 0.75}, divisor: true}, 
+    {scale: {x: 1.0, y: 1.0}, divisor: true}, 
+    {scale: {x: 0.75, y: 0.75}, divisor: false}, 
+    {scale: {x: 0.75, y: 1.0}, divisor: false}, 
+  ])
+  const adjustedSize = size.multiply(windowSettings.scale as paper.SizeLike)
+
+  point = point
+    .add([size.width * 0.5, size.height * 0.5])
+    .subtract([adjustedSize.width * 0.5, adjustedSize.height * 0.5])
+
+  return drawWindow(point, adjustedSize, settings, windowSettings.divisor)
+}
+
 
 export const drawWindowGrid = (start: paper.Point, size: paper.Size, settings: BuildingSettings) => {
   const windowsOffset = size.width * settings.windowGridOffsetFactor
@@ -134,7 +151,7 @@ export const drawWindowGrid = (start: paper.Point, size: paper.Size, settings: B
     for (let row = 0; row < rows; row++) {
       const spaceOffset = spaceSize * 0.175
 
-      const windowSize = new paper.Size(
+      let windowSize = new paper.Size(
         spaceSize - spaceOffset * 2.0,
         spaceSize - spaceOffset * 2.0,
       )
@@ -148,7 +165,8 @@ export const drawWindowGrid = (start: paper.Point, size: paper.Size, settings: B
       const addWindow = math.pickRandom([true, true, false])
       
       if (addWindow)
-        windows.push(drawWindow(windowPoint, windowSize, settings))
+        
+        windows.push(generateWindow(windowPoint, windowSize, settings))
     }
   }
 
