@@ -70,7 +70,7 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
       const nextColor = chroma(settings.tileColorB).brighten(math.random(0.0, 0.5))
 
       tile.path.fillColor = new paper.Color(currentColor.hex())
-      tile.path.strokeColor = new paper.Color(currentColor.hex())
+      tile.path.strokeColor = settings.strokeColor
 
       tiles.push({
         ...tile,

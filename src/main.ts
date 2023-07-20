@@ -4,6 +4,7 @@ import * as math from 'mathjs'
 import chroma from 'chroma-js'
 import * as building from './building'
 import GUI from 'lil-gui'
+import CCapture from 'ccapture.js-npmfixed'
 
 /**
  * Postal Settings
@@ -44,6 +45,18 @@ const settings = {
       postal = drawTajimiPostal(paper.view, settings)
     }
   },
+  exportSvg: () => {
+    const svg = paper.project.exportSVG({asString: true})
+    const link = document.createElement('a')
+    const url = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg as string)
+
+    link.href = url
+    link.download = 'tajimi.svg'
+    link.click()
+  },
+  record: () => {
+    recordingRequested = true
+  },
   ...palette
 }
 
@@ -65,15 +78,16 @@ gui.addColor(settings, 'tileColorB').onChange(() => {
 
 gui.add(settings, 'delayOffset').min(0).max(100.0).step(0.01)
 gui.add(settings, 'updateTajimi')
+gui.add(settings, 'exportSvg')
+gui.add(settings, 'record')
 
 const updateTileColors = (postal: TajimiPostal) => {
   postal.tajimi.buildings.forEach(b => b.tiles.forEach(tile =>{
 
-    const currentColor = chroma(settings.tileColorA).brighten(math.random(-0.1, 0.1))
-    const nextColor = chroma(settings.tileColorB).brighten(math.random(-0.1, 0.1))
+    const currentColor = chroma(settings.tileColorA).brighten(math.random(-0.2, 0.2))
+    const nextColor = chroma(settings.tileColorB).brighten(math.random(-0.2, 0.2))
 
     tile.path.fillColor = new paper.Color(currentColor.hex())
-    tile.path.strokeColor = new paper.Color(currentColor.hex())
 
     tile.currentColor = currentColor.hex()
     tile.nextColor = nextColor.hex()
@@ -140,7 +154,15 @@ const drawTajimiPostal = (view: paper.View, settings: any): TajimiPostal => {
 let postal: TajimiPostal | undefined = undefined
 
 window.onload = () => {
+  const scale = 2.0
   const canvas: HTMLCanvasElement = document.getElementById('painting')
+  const ctx = canvas.getContext('2d')
+  canvas.style.width = `540px`
+  canvas.style.height = `540px`
+  canvas.width = 540 * scale
+  canvas.height = 540 * scale
+  ctx?.scale(scale, scale)
+
   paper.setup(canvas)
 
   postal = drawTajimiPostal(paper.view, settings)
@@ -150,9 +172,43 @@ window.onload = () => {
 
     updateSettings(postal, settings)
     animateTiles(globalFrame, postal.tajimi.buildings)
+    checkRecording(canvas, globalFrame)
   }
 }
 
+/**
+ * Recording logic
+ */
+
+let capturer = new CCapture({ format: 'png', framerate: 30, verbose: true })
+let recordingRequested = false
+let isRecording = false
+
+const checkRecording = (canvas: HTMLCanvasElement, frame: number) => {
+  const animationFrame = frame % settings.tileAnimation
+
+  if (recordingRequested) {
+    isRecording = animationFrame === 0
+    recordingRequested = !isRecording
+  }
+
+  if(isRecording) {
+    if (animationFrame === 0)
+      capturer.start()
+    
+    if (animationFrame < settings.tileAnimation)
+      capturer.capture(canvas)
+    
+    if (animationFrame === settings.tileAnimation - 1) {
+      capturer.capture(canvas)
+      capturer.stop()
+      capturer.save()
+    }
+
+
+    isRecording = animationFrame < settings.tileAnimation - 1
+  }
+}
 
 const updateSettings = (postal: TajimiPostal, settings: any) => {
   const container = document.getElementById('container')
@@ -191,7 +247,6 @@ const animateTiles = (globalFrame: number, buildings: Array<building.Building>) 
 
       const color = chroma.mix(tile.currentColor, tile.nextColor, progress).hex()
       tile.path.fillColor = new paper.Color(color)
-
     })
   })
 }

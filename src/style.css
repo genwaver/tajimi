@@ -11,8 +11,3 @@ html, body {
   align-items: center;
   justify-content: center;
 }
-
-canvas {
-  width: 540px;
-  height: 540px;
-}

@@ -9,11 +9,14 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@types/ccapture.js": "^1.1.1",
     "@types/chroma-js": "^2.4.0",
     "typescript": "^5.0.2",
     "vite": "^4.4.0"
   },
   "dependencies": {
+    "ccapture.js": "^1.1.0",
+    "ccapture.js-npmfixed": "^1.1.0",
     "chroma-js": "^2.4.2",
     "lil-gui": "^0.18.2",
     "mathjs": "^11.8.2",
