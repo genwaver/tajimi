@@ -43,6 +43,8 @@ export interface BuildingWindow {
 
 export interface Building {
   group: paper.Group 
+  point: paper.Point
+  size: paper.Size
   body: paper.Path
   tiles: Array<BuildingTile>
   windows: Array<BuildingWindow>
@@ -66,8 +68,8 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
   const tiles: Array<BuildingTile> = []
 
   grid.tiles.forEach((tile) => {
-      const currentColor = chroma(settings.tileColorA).brighten(math.random(0.0, 0.5))
-      const nextColor = chroma(settings.tileColorB).brighten(math.random(0.0, 0.5))
+      const currentColor = chroma(settings.tileColorA).brighten(math.random(-0.3, 0.3))
+      const nextColor = chroma(settings.tileColorB).brighten(math.random(-0.3, 0.3))
 
       tile.path.fillColor = new paper.Color(currentColor.hex())
       tile.path.strokeColor = settings.strokeColor
@@ -192,6 +194,8 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
 
   return {
     group,
+    point,
+    size,
     body,
     tiles,
     windows

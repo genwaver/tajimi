@@ -5,6 +5,8 @@ import chroma from 'chroma-js'
 import * as building from './building'
 import GUI from 'lil-gui'
 import { CanvasCapture } from 'canvas-capture'
+import { Logo, drawLogo } from './gw'
+import { PointText } from 'paper/dist/paper-core'
 
 interface Painting {
   canvas: HTMLCanvasElement,
@@ -86,8 +88,8 @@ gui.addColor(settings, 'tileColorB').onChange(() => {
   }
 })
 
-gui.add(settings, 'delayOffset').min(0).max(1000.0).step(0.01)
-gui.add(settings, 'delayOffset2').min(0).max(1000.0).step(0.01)
+gui.add(settings, 'delayOffset').min(0).max(50.0).step(0.01)
+gui.add(settings, 'delayOffset2').min(0).max(50.0).step(0.01)
 gui.add(settings, 'delayOffset3').min(0).max(100.0).step(0.01)
 gui.add(settings, 'exportScale').min(1.0).max(4.0).step(1.0).onChange(() => {
   if (painting && postal) {
@@ -112,8 +114,8 @@ gui.add(settings, 'record')
 const updateTileColors = (postal: TajimiPostal) => {
   postal.tajimi.buildings.forEach(b => b.tiles.forEach(tile =>{
 
-    const currentColor = chroma(settings.tileColorA).saturate(math.random(-0.2, 0.2))
-    const nextColor = chroma(settings.tileColorB).saturate(math.random(-0.2, 0.2))
+    const currentColor = chroma(settings.tileColorA).brighten(math.random(-0.3, 0.3))
+    const nextColor = chroma(settings.tileColorB).brighten(math.random(-0.3, 0.3))
 
     tile.path.fillColor = new paper.Color(currentColor.hex())
 
@@ -125,9 +127,11 @@ const updateTileColors = (postal: TajimiPostal) => {
 
 export interface TajimiPostal {
   group: paper.Group
+  logo: Logo
   background: paper.Path,
   frame: paper.Path,
-  tajimi: building.Tajimi
+  tajimi: building.Tajimi,
+  title: paper.PointText
 }
 
 const scale =  (number: number, inMin: number, inMax: number, outMin: number, outMax: number) => {
@@ -162,16 +166,47 @@ const drawTajimiPostal = (view: paper.View, settings: any): TajimiPostal => {
 
   background.sendToBack()
 
+  const logo = drawLogo(postalFramePoint.add(canvasOffset * 0.5),
+    canvasOffset * 1.15, 
+    {
+      strokeWidth: settings.strokeWidth,
+      stroke: settings.strokeColor,
+      fill: settings.frameColor,
+      crest: settings.tileColorA,
+      beak: settings.tileColorB
+    }
+  )
+
+  const content = '多治見市'
+  const fontSize = canvasOffset * 0.5
+
+  const title = new paper.PointText(
+    postalFramePoint
+      .add(postalFrameSize)
+      .subtract([canvasOffset * 0.5, canvasOffset * 0.5 + fontSize * -0.35])
+      .subtract([(content.length + 1) * fontSize, 0.0])
+  )
+
+  title.fillColor = settings.strokeColor
+  title.fontFamily = 'Noto Sans JP, sans-serif'
+  title.fontSize = canvasOffset * 0.5
+  title.fontWeight = '500'
+  title.content = '多治見市'
+
   const group = new paper.Group()
   group.addChild(background)
   group.addChild(postalFrame)
   group.addChild(tajimi.group)
+  group.addChild(logo.group)
+  group.addChild(title)
 
   return {
     group,
     background,
     frame: postalFrame,
-    tajimi
+    tajimi,
+    logo,
+    title
   }
 }
 
@@ -282,6 +317,12 @@ const updateSettings = (postal: TajimiPostal, settings: any) => {
     w.glass.strokeColor = settings.strokeColor
     w.division.strokeColor = settings.strokeColor
   }))
+
+  postal.logo.group.strokeColor = settings.strokeColor
+  postal.title.fillColor = settings.strokeColor
+  postal.logo.eye.fillColor = settings.strokeColor
+  postal.logo.crest.fillColor = settings.tileColorA
+  postal.logo.beak.fillColor = settings.tileColorB
 }
 
 const animateTiles = (globalFrame: number, buildings: Array<building.Building>) => {
@@ -294,17 +335,18 @@ const animateTiles = (globalFrame: number, buildings: Array<building.Building>) 
       )
 
 
-      let delay = Math.abs(Math.sin(buildingPoint.x * Math.PI * 4.0)) * settings.delayOffset 
-      delay += buildingPoint.y * settings.delayOffset2
-      //delay *= Math.abs(buildingPoint.x) * settings.delayOffset3 
-      delay += building.body.bounds.center.x * settings.delayOffset3
+      //let delay = Math.abs(Math.sin(buildingPoint.x * Math.PI * 4.0)) * settings.delayOffset 
+      let delay = index * settings.delayOffset
+      delay += building.body.bounds.x * settings.delayOffset3
 
       let animationFrame = (globalFrame + delay) % settings.tileAnimation
-      let progress = scale(animationFrame, 0.0, settings.tileAnimation, 0.0, 1.0)
-      progress = Math.pow(Math.sin(progress * Math.PI * 2.0), 2.0)
+      const progress = scale(animationFrame, 0.0, settings.tileAnimation, 0.0, 1.0)
+      const ease = Math.pow(Math.sin(progress * Math.PI * 2.0), 2.0)
 
-      const color = chroma.mix(tile.currentColor, tile.nextColor, progress).hex()
+      const color = chroma.mix(tile.currentColor, tile.nextColor, ease).hex()
       tile.path.fillColor = new paper.Color(color)
+
+
     })
   })
 }
