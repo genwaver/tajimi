@@ -199,7 +199,7 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
 }
 
 export const drawTajimi = (point: paper.Point, size: paper.Size, settings: BuildingSettings) => {
-  const buildings = []
+  let buildings = []
   const minimumBuildingWidth = settings.buildingWidthMinimumFactor * paper.view.size.width
   const minimumAvailableSpace = settings.buildingWidthFactorThreshold * paper.view.size.width
 
@@ -243,8 +243,7 @@ export const drawTajimi = (point: paper.Point, size: paper.Size, settings: Build
   const lastBuilding = drawBuilding(buildingPoint, buildingSize, settings)
   buildings.push(lastBuilding)
 
-  buildings.sort((a, b) => b.body.bounds.area - a.body.bounds.area)
-  buildings.forEach(b => b.group.sendToBack())
+  buildings = buildings.sort((a, b) => a.body.bounds.area - b.body.bounds.area)
 
   const visibleArea = new paper.Path.Rectangle({
     point: point.add(settings.strokeWidth * 0.5),

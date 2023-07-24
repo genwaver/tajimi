@@ -17,10 +17,10 @@ interface Painting {
 const palette = {
   frameColor: 'white',
   backgroundColor: '#FDEBED',
-  strokeColor: '#D9ACF5',
-  tileColorA: '#FFCEFE',
-  tileColorB: '#AAE3E2',
-  windowColor: '#FDF7C3'
+  strokeColor: '#b338ff',
+  tileColorA: '#fff0ff',
+  tileColorB: '#34f4f1',
+  windowColor: '#fff48f'
 }
 
 const settings = {
@@ -28,7 +28,7 @@ const settings = {
   previewHeight: 540,
   postalWidth: 540,
   postalHeight: 540,
-  postalFrameOffsetFactor: 0.9,
+  postalFrameOffsetFactor: 0.85,
   postalFrameSizeFactor: 0.1,
   postalFrameRadius: 4.0,
   buildingHeightMinFactor: 0.35,
@@ -43,9 +43,11 @@ const settings = {
   windowGridOffsetFactor: 0.1,
   windowGridCols: 2,
   windowMinFrameOffset: 3.0,
-  tileAnimation: 80.0,
+  tileAnimation: 70.0,
   strokeWidth: 1.5,
-  delayOffset: 0.5,
+  delayOffset: 10.0,
+  delayOffset2: 12.0,
+  delayOffset3: 25.0,
   exportScale: 2.0,
   updateTajimi: () => {
     if(postal) {
@@ -84,20 +86,22 @@ gui.addColor(settings, 'tileColorB').onChange(() => {
   }
 })
 
-gui.add(settings, 'delayOffset').min(0).max(100.0).step(0.01)
+gui.add(settings, 'delayOffset').min(0).max(1000.0).step(0.01)
+gui.add(settings, 'delayOffset2').min(0).max(1000.0).step(0.01)
+gui.add(settings, 'delayOffset3').min(0).max(100.0).step(0.01)
 gui.add(settings, 'exportScale').min(1.0).max(4.0).step(1.0).onChange(() => {
   if (painting && postal) {
     const canvasWidth = settings.postalWidth * settings.exportScale
     const canvasHeight = settings.postalHeight * settings.exportScale
-    paper.view.viewSize = new paper.Size(canvasWidth, canvasHeight)
+    paper.view.viewSize = new paper.Size(canvasWidth * window.devicePixelRatio, canvasHeight * window.devicePixelRatio)
 
     postal.group.remove()
     postal = drawTajimiPostal(paper.view, settings)
 
     painting.canvas.style.width = `${canvasWidth}px`
     painting.canvas.style.height = `${canvasHeight}px`
-    painting.canvas.width = canvasWidth
-    painting.canvas.height = canvasHeight
+    painting.canvas.width = canvasWidth * window.devicePixelRatio
+    painting.canvas.height = canvasHeight * window.devicePixelRatio
   }
 })
 
@@ -108,8 +112,8 @@ gui.add(settings, 'record')
 const updateTileColors = (postal: TajimiPostal) => {
   postal.tajimi.buildings.forEach(b => b.tiles.forEach(tile =>{
 
-    const currentColor = chroma(settings.tileColorA).brighten(math.random(-0.2, 0.2))
-    const nextColor = chroma(settings.tileColorB).brighten(math.random(-0.2, 0.2))
+    const currentColor = chroma(settings.tileColorA).saturate(math.random(-0.2, 0.2))
+    const nextColor = chroma(settings.tileColorB).saturate(math.random(-0.2, 0.2))
 
     tile.path.fillColor = new paper.Color(currentColor.hex())
 
@@ -198,8 +202,8 @@ const setupPainting = (settings: any) : Painting => {
   const preview: HTMLCanvasElement = document.getElementById('preview')
   preview.style.width = `${settings.previewWidth}px`
   preview.style.height = `${settings.previewHeight}px`
-  preview.width = settings.previewWidth
-  preview.height = settings.previewHeight
+  preview.width = settings.previewWidth * window.devicePixelRatio
+  preview.height = settings.previewHeight * window.devicePixelRatio
 
   const canvasWidth = settings.postalWidth * settings.exportScale
   const canvasHeight = settings.postalHeight * settings.exportScale
@@ -207,8 +211,8 @@ const setupPainting = (settings: any) : Painting => {
   const canvas: HTMLCanvasElement = document.getElementById('painting')
   canvas.style.width = `${canvasWidth}px`
   canvas.style.height = `${canvasHeight}px`
-  canvas.width = canvasWidth
-  canvas.height = canvasHeight
+  canvas.width = canvasWidth * window.devicePixelRatio
+  canvas.height = canvasHeight * window.devicePixelRatio
 
   paper.setup(canvas)
 
@@ -220,9 +224,9 @@ const setupPainting = (settings: any) : Painting => {
 
 const drawPreview = ({preview, canvas}: Painting, settings: any) => {
   const ctx = preview.getContext('2d')
-  const canvasWidth = settings.postalWidth * settings.exportScale
-  const canvasHeight = settings.postalHeight * settings.exportScale
-  ctx?.drawImage(canvas, 0, 0, canvasWidth, canvasHeight, 0, 0, settings.previewWidth, settings.previewHeight)
+  const canvasWidth = settings.postalWidth * settings.exportScale * window.devicePixelRatio
+  const canvasHeight = settings.postalHeight * settings.exportScale * window.devicePixelRatio
+  ctx?.drawImage(canvas, 0, 0, canvasWidth, canvasHeight, 0, 0, settings.previewWidth * window.devicePixelRatio, settings.previewHeight * window.devicePixelRatio)
 }
 
 
@@ -232,9 +236,10 @@ const drawPreview = ({preview, canvas}: Painting, settings: any) => {
  */
 let recordingRequested = false
 let isRecording = false
+let recordingFrames = settings.tileAnimation * 2.0
 
 const checkRecording = (canvas: HTMLCanvasElement, frame: number) => {
-  const animationFrame = frame % settings.tileAnimation
+  const animationFrame = frame % recordingFrames
 
   if (recordingRequested) {
     isRecording = animationFrame === 0
@@ -248,16 +253,16 @@ const checkRecording = (canvas: HTMLCanvasElement, frame: number) => {
       CanvasCapture.beginGIFRecord()
     }
     
-    if (animationFrame < settings.tileAnimation) {
+    if (animationFrame < recordingFrames) {
       CanvasCapture.recordFrame()
     }
     
-    if (animationFrame === settings.tileAnimation - 1) {
+    if (animationFrame === recordingFrames - 1) {
       CanvasCapture.stopRecord()
     }
 
 
-    isRecording = animationFrame < settings.tileAnimation - 1
+    isRecording = animationFrame < recordingFrames - 1
   }
 }
 
@@ -289,13 +294,14 @@ const animateTiles = (globalFrame: number, buildings: Array<building.Building>) 
       )
 
 
-      let delay = Math.sin((buildingPoint.x + buildingPoint.y) * Math.PI) * settings.delayOffset 
-      delay += buildingPoint.length * 100.0
-      delay += building.body.bounds.center.x * 20.0
+      let delay = Math.abs(Math.sin(buildingPoint.x * Math.PI * 4.0)) * settings.delayOffset 
+      delay += buildingPoint.y * settings.delayOffset2
+      //delay *= Math.abs(buildingPoint.x) * settings.delayOffset3 
+      delay += building.body.bounds.center.x * settings.delayOffset3
 
       let animationFrame = (globalFrame + delay) % settings.tileAnimation
       let progress = scale(animationFrame, 0.0, settings.tileAnimation, 0.0, 1.0)
-      progress = Math.sin(progress * Math.PI)
+      progress = Math.pow(Math.sin(progress * Math.PI * 2.0), 2.0)
 
       const color = chroma.mix(tile.currentColor, tile.nextColor, progress).hex()
       tile.path.fillColor = new paper.Color(color)
