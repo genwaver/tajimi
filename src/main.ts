@@ -6,7 +6,6 @@ import * as building from './building'
 import GUI from 'lil-gui'
 import { CanvasCapture } from 'canvas-capture'
 import { Logo, drawLogo } from './gw'
-import { PointText } from 'paper/dist/paper-core'
 
 interface Painting {
   canvas: HTMLCanvasElement,
@@ -45,7 +44,8 @@ const settings = {
   windowGridOffsetFactor: 0.1,
   windowGridCols: 2,
   windowMinFrameOffset: 3.0,
-  tileAnimation: 70.0,
+  buildingAnimation: 300.0,
+  tileAnimation: 60.0,
   strokeWidth: 1.5,
   delayOffset: 10.0,
   delayOffset2: 12.0,
@@ -227,6 +227,9 @@ window.onload = () => {
 
     updateSettings(postal!, settings)
     animateTiles(globalFrame, postal!.tajimi.buildings)
+    animateBuildings(globalFrame, postal!, settings)
+    animateWindows(globalFrame, postal!, settings)
+
     drawPreview(painting!, settings)
 
     checkRecording(painting!.canvas, globalFrame)
@@ -264,14 +267,12 @@ const drawPreview = ({preview, canvas}: Painting, settings: any) => {
   ctx?.drawImage(canvas, 0, 0, canvasWidth, canvasHeight, 0, 0, settings.previewWidth * window.devicePixelRatio, settings.previewHeight * window.devicePixelRatio)
 }
 
-
-
 /**
  * Recording logic
  */
 let recordingRequested = false
 let isRecording = false
-let recordingFrames = settings.tileAnimation * 2.0
+let recordingFrames = settings.buildingAnimation
 
 const checkRecording = (canvas: HTMLCanvasElement, frame: number) => {
   const animationFrame = frame % recordingFrames
@@ -325,8 +326,33 @@ const updateSettings = (postal: TajimiPostal, settings: any) => {
   postal.logo.beak.fillColor = settings.tileColorB
 }
 
+/**
+ * 
+ * Animation Functions
+ */
+
+const animateBuildings = (_globalFrame: number, postal: TajimiPostal, settings: any) => {
+  postal.tajimi.buildings.forEach(building => {
+    const speed = paper.view.size.width / settings.buildingAnimation
+    building.group.position.x -= speed
+
+    if (building.group.position.x < 0.0) {
+      building.group.position.x = paper.view.size.width
+    }
+  })
+}
+
+const animateWindows = (_globalFrame: number, postal: TajimiPostal, settings: any) => {
+  postal.tajimi.buildings.forEach(building => {
+    building.windows.forEach(window => {
+      const offset = scale(building.body.position.x, 0.0, paper.view.size.width, -8.0, 8.0)
+      window.frame.shadowOffset.x = offset
+    })
+  })
+}
+
 const animateTiles = (globalFrame: number, buildings: Array<building.Building>) => {
-  buildings.forEach(building => {
+  buildings.forEach((building, buildingIndex) => {
     building.tiles.forEach((tile, index) => {
 
       let buildingPoint = new paper.Point(
@@ -334,10 +360,8 @@ const animateTiles = (globalFrame: number, buildings: Array<building.Building>) 
         scale(tile.point.y, building.body.bounds.topLeft.y, building.body.bounds.bottomLeft.y, -0.5, 0.5)
       )
 
-
-      //let delay = Math.abs(Math.sin(buildingPoint.x * Math.PI * 4.0)) * settings.delayOffset 
       let delay = index * settings.delayOffset
-      delay += building.body.bounds.x * settings.delayOffset3
+      delay += buildingIndex * settings.delayOffset3
 
       let animationFrame = (globalFrame + delay) % settings.tileAnimation
       const progress = scale(animationFrame, 0.0, settings.tileAnimation, 0.0, 1.0)

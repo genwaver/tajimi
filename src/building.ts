@@ -91,7 +91,10 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
     strokeWidth: settings.strokeWidth,
     strokeColor: settings.strokeColor,
     fillColor: 'white',
-    radius: settings.windowRadius
+    radius: settings.windowRadius,
+    shadowColor: settings.strokeColor,
+    shadowBlur: 3.5,
+    shadowOffset: new paper.Point(0.0, 4.0)
   })
   
   let glassOffset = size.width * settings.windowFrameOffsetFactor
@@ -178,15 +181,27 @@ export const drawWindowGrid = (start: paper.Point, size: paper.Size, settings: B
 export const drawBuilding = (point: paper.Point, size: paper.Size, settings: BuildingSettings): Building => {
   const tiles = drawTiles(point, size, settings)
 
+  const bodyShadow = new paper.Path.Rectangle({
+    point,
+    size,
+    fillColor: settings.strokeColor,
+    strokeColor: settings.strokeColor,
+    strokeWidth: settings.strokeWidth,
+    shadowColor: settings.strokeColor,
+    shadowBlur: 3.5,
+    shadowOffset: new paper.Point(1.5, 3.5)
+  })
+
   const body = new paper.Path.Rectangle({
     point,
     size,
     strokeColor: settings.strokeColor,
-    strokeWidth: settings.strokeWidth
+    strokeWidth: settings.strokeWidth,
   })
 
   const windows = drawWindowGrid(point, size, settings)
   const group = new paper.Group()
+  group.addChild(bodyShadow)
   group.addChildren(tiles.map(t => t.path))
   group.addChild(body)
   group.addChildren(windows.map(w => w.group))
@@ -207,8 +222,8 @@ export const drawTajimi = (point: paper.Point, size: paper.Size, settings: Build
   const minimumBuildingWidth = settings.buildingWidthMinimumFactor * paper.view.size.width
   const minimumAvailableSpace = settings.buildingWidthFactorThreshold * paper.view.size.width
 
-  let availableWidth = size.width + size.width * 0.2
-  let currentX = point.x -size.width * 0.2 * 0.5
+  let availableWidth = size.width + size.width * 0.3
+  let currentX = point.x -size.width * 0.3 * 0.5
 
   while(availableWidth > minimumAvailableSpace) {
     const buildingHeight = math.random(
