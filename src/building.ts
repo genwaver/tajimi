@@ -1,6 +1,7 @@
 import * as paper from 'paper'
 import * as math from 'mathjs'
 import * as patterns from './patterns'
+import _ from 'lodash'
 import chroma from 'chroma-js'
 
 export interface Palette {
@@ -52,6 +53,8 @@ export interface Building {
 
 export interface Tajimi {
   group: paper.Group
+  point: paper.Point,
+  size: paper.Size
   background: paper.Path
   strokeBackground: paper.Path
   buildings: Array<Building>
@@ -73,6 +76,7 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
 
       tile.path.fillColor = new paper.Color(currentColor.hex())
       tile.path.strokeColor = settings.strokeColor
+      tile.path.strokeWidth = settings.strokeWidth
 
       tiles.push({
         ...tile,
@@ -84,7 +88,39 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
   return tiles
 }
 
-export const drawWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings, addDivisor = true): BuildingWindow => {
+const drawRandomShine = (point: paper.Point, size: paper.Size, palette: Palette) => {
+  const segments = math.randomInt(2, 4)
+  const hip = new paper.Point(size.multiply(2.0))
+  const right = new paper.Point(size.width, 0.0)
+  const bottom = new paper.Point(0.0, size.height)
+
+  const shines = []
+  let currentPosition = 0.0
+
+  for (let index = 0; index < segments; index++) {
+    const dimension = math.random(0.1, 0.3)
+    const offset = math.random(0.05, 0.3)
+
+    const start = hip.multiply(currentPosition + offset)
+    const end = hip.multiply(currentPosition + offset + dimension)
+
+    const shine = new paper.Path([
+      point.add(start.project(right)),
+      point.add(end.project(right)),
+      point.add(end.project(bottom)),
+      point.add(start.project(bottom)),
+    ])
+
+    shine.closed = true
+    shine.fillColor = chroma(palette.windowColor).brighten(1.5).hex()
+    shines.push(shine)
+    currentPosition += offset + dimension
+  }
+
+  return shines
+}
+
+export const drawWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings, options: { divisor: boolean, shine: boolean, person: boolean }): BuildingWindow => {
   const frame = new paper.Path.Rectangle({
     point: point,
     size: size,
@@ -93,8 +129,8 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
     fillColor: 'white',
     radius: settings.windowRadius,
     shadowColor: settings.strokeColor,
-    shadowBlur: 3.5,
-    shadowOffset: new paper.Point(0.0, 4.0)
+    shadowBlur: 8.0,
+    shadowOffset: new paper.Point(0.0, 8.0)
   })
   
   let glassOffset = size.width * settings.windowFrameOffsetFactor
@@ -104,12 +140,27 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
   const glassPoint = point.add(glassOffset)
   const glassSize = size.subtract(glassOffset * 2.0)
 
+  const glassGroup = new paper.Group()
+
+  const glassMask = new paper.Path.Rectangle({
+    point: glassPoint,
+    size: glassSize.multiply(0.98),
+  })
+
+  glassMask.clipMask = true
+
   const glass = new paper.Path.Rectangle({
+    point: glassPoint,
+    size: glassSize,
+    fillColor: settings.windowColor,
+    radius: settings.windowRadius
+  })
+
+  const glassFrame = new paper.Path.Rectangle({
     point: glassPoint,
     size: glassSize,
     strokeWidth: settings.strokeWidth,
     strokeColor: settings.strokeColor,
-    fillColor: settings.windowColor,
     radius: settings.windowRadius
   })
 
@@ -119,10 +170,48 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
   ])
 
   division.strokeColor = new paper.Color(settings.strokeColor)
-  division.strokeWidth = addDivisor ? settings.strokeWidth : 0.0
+  division.strokeWidth = options.divisor ? settings.strokeWidth : 0.0
+
+  const shines = drawRandomShine(glassPoint, glassSize, settings)
+  const person = new paper.Group()
+
+  const head = new paper.Path.Circle({
+    center: glassPoint.add(glassSize.multiply(0.5)),
+    radius: glassSize.width * 0.2,
+    fillColor: settings.strokeColor
+  })
+
+  const bodyStart = glassPoint.add([glassSize.width * 0.2, glassSize.height])
+  const bodyThrough = glassPoint.add([glassSize.width * 0.5, glassSize.height * 0.6])
+  const bodyEnd = glassPoint.add([glassSize.width * 0.8, glassSize.height])
+
+  const body = new paper.Path.Arc({
+    from: bodyStart,
+    through: bodyThrough,
+    to: bodyEnd,
+    fillColor: settings.strokeColor
+  })
+
+  body.closed = true
+
+  person.addChild(head)
+  person.addChild(body)
+
+  glassGroup.addChild(glassMask)
+  glassGroup.addChild(glass)
+  if (!options.person) glassGroup.addChildren(shines)
+  if (options.person) glassGroup.addChild(person)
+  glassGroup.addChild(division)
+  glassGroup.addChild(glassFrame)
+
+
+
+  const group = new paper.Group()
+  group.addChild(frame)
+  group.addChild(glassGroup)
 
   return {
-    group: new paper.Group([frame, glass, division]),
+    group,
     frame,
     glass,
     division
@@ -130,11 +219,12 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
 }
 
 const generateWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings) => {
+  const person = math.pickRandom([true, true, false])
   const windowSettings = math.pickRandom([
-    {scale: {x: 1.0, y: 0.75}, divisor: true}, 
-    {scale: {x: 1.0, y: 1.0}, divisor: true}, 
-    {scale: {x: 0.75, y: 0.75}, divisor: false}, 
-    {scale: {x: 0.75, y: 1.0}, divisor: false}, 
+    {scale: {x: 1.0, y: 0.75}, divisor: true, shine: true, person: false}, 
+    {scale: {x: 1.0, y: 1.0}, divisor: true, shine: true, person: false}, 
+    {scale: {x: 0.75, y: 0.75}, divisor: false, shine: !person, person}, 
+    {scale: {x: 0.75, y: 1.0}, divisor: false, shine: !person, person}, 
   ])
   const adjustedSize = size.multiply(windowSettings.scale as paper.SizeLike)
 
@@ -142,7 +232,7 @@ const generateWindow = (point: paper.Point, size: paper.Size, settings: Building
     .add([size.width * 0.5, size.height * 0.5])
     .subtract([adjustedSize.width * 0.5, adjustedSize.height * 0.5])
 
-  return drawWindow(point, adjustedSize, settings, windowSettings.divisor)
+  return drawWindow(point, adjustedSize, settings, { divisor: windowSettings.divisor, shine: windowSettings.shine, person: windowSettings.person})
 }
 
 
@@ -167,7 +257,7 @@ export const drawWindowGrid = (start: paper.Point, size: paper.Size, settings: B
         .add(spaceOffset)
 
 
-      const addWindow = math.pickRandom([true, true, false])
+      const addWindow = math.pickRandom([true, true, true, false])
       
       if (addWindow)
         
@@ -188,8 +278,8 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
     strokeColor: settings.strokeColor,
     strokeWidth: settings.strokeWidth,
     shadowColor: settings.strokeColor,
-    shadowBlur: 3.5,
-    shadowOffset: new paper.Point(1.5, 3.5)
+    shadowBlur: 12.0,
+    shadowOffset: new paper.Point(0.0, 8.0)
   })
 
   const body = new paper.Path.Rectangle({
@@ -223,7 +313,9 @@ export const drawTajimi = (point: paper.Point, size: paper.Size, settings: Build
   const minimumAvailableSpace = settings.buildingWidthFactorThreshold * paper.view.size.width
 
   let availableWidth = size.width + size.width * 0.3
-  let currentX = point.x -size.width * 0.3 * 0.5
+  let currentX = point.x - ((size.width * 0.3) * 0.5)
+  const tajimiPoint = new paper.Point(currentX, point.y)
+  const tajimiSize = new paper.Size(availableWidth, size.height)
 
   while(availableWidth > minimumAvailableSpace) {
     const buildingHeight = math.random(
@@ -295,6 +387,8 @@ export const drawTajimi = (point: paper.Point, size: paper.Size, settings: Build
 
   return {
     group: tajimi,
+    point: tajimiPoint,
+    size: tajimiSize,
     background,
     strokeBackground,
     buildings

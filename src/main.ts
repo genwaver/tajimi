@@ -17,25 +17,25 @@ interface Painting {
  */
 const palette = {
   frameColor: 'white',
-  backgroundColor: '#FDEBED',
+  backgroundColor: '#fff0f8',
   strokeColor: '#b338ff',
-  tileColorA: '#fff0ff',
+  tileColorA: '#ffe5ff',
   tileColorB: '#34f4f1',
   windowColor: '#fff48f'
 }
 
 const settings = {
-  previewWidth: 540,
-  previewHeight: 540,
-  postalWidth: 540,
-  postalHeight: 540,
-  postalFrameOffsetFactor: 0.85,
+  previewWidth: 540 * 1.5,
+  previewHeight: 540 * 1.5,
+  postalWidth: 960,
+  postalHeight: 960,
+  postalFrameOffsetFactor: 0.825,
   postalFrameSizeFactor: 0.1,
   postalFrameRadius: 4.0,
   buildingHeightMinFactor: 0.35,
   buildingHeightMaxFactor: 0.7,
-  buildingWidthMinFactor: 0.225,
-  buildingWidthMaxFactor: 0.375,
+  buildingWidthMinFactor: 0.275,
+  buildingWidthMaxFactor: 0.395,
   buildingWidthFactorThreshold: 0.25,
   buildingWidthMinimumFactor: 0.15,
   buildingCount: 8,
@@ -46,8 +46,9 @@ const settings = {
   windowMinFrameOffset: 3.0,
   buildingAnimation: 300.0,
   tileAnimation: 60.0,
-  strokeWidth: 1.5,
-  delayOffset: 10.0,
+  strokeWidth: 2.75,
+  shadowBlur: 8.0,
+  delayOffset: 21.5,
   delayOffset2: 12.0,
   delayOffset3: 25.0,
   exportScale: 2.0,
@@ -155,7 +156,10 @@ const drawTajimiPostal = (view: paper.View, settings: any): TajimiPostal => {
     strokeColor: settings.strokeColor,
     strokeWidth: settings.strokeWidth,
     fillColor: settings.frameColor,
-    radius: settings.postalFrameRadius
+    radius: settings.postalFrameRadius,
+    shadowColor: '#00000026',
+    shadowBlur: settings.shadowBlur,
+    shadowOffset: new paper.Point(8.0, 8.0)
   })
 
   const canvasOffset = postalFrameSize.width * settings.postalFrameSizeFactor * 0.5
@@ -170,6 +174,7 @@ const drawTajimiPostal = (view: paper.View, settings: any): TajimiPostal => {
     canvasOffset * 1.15, 
     {
       strokeWidth: settings.strokeWidth,
+      shadowBlur: settings.shadowBlur,
       stroke: settings.strokeColor,
       fill: settings.frameColor,
       crest: settings.tileColorA,
@@ -286,7 +291,9 @@ const checkRecording = (canvas: HTMLCanvasElement, frame: number) => {
     if (animationFrame === 0) {
       CanvasCapture.init(canvas)
       CanvasCapture.setVerbose(true)
-      CanvasCapture.beginGIFRecord()
+      CanvasCapture.beginPNGFramesRecord({ onExportProgress: (progress) => {
+        console.log(`Zipping... ${Math.round(progress * 100)}% complete.`)
+      }})
     }
     
     if (animationFrame < recordingFrames) {
@@ -333,11 +340,11 @@ const updateSettings = (postal: TajimiPostal, settings: any) => {
 
 const animateBuildings = (_globalFrame: number, postal: TajimiPostal, settings: any) => {
   postal.tajimi.buildings.forEach(building => {
-    const speed = paper.view.size.width / settings.buildingAnimation
+    const speed = postal.tajimi.size.width / settings.buildingAnimation
     building.group.position.x -= speed
 
-    if (building.group.position.x < 0.0) {
-      building.group.position.x = paper.view.size.width
+    if (building.group.position.x < postal.tajimi.point.x ) {
+      building.group.position.x = postal.tajimi.point.x + postal.tajimi.size.width
     }
   })
 }

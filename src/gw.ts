@@ -8,7 +8,8 @@ export interface LogoPalette {
 }
 
 export interface LogoSettings extends LogoPalette {
-  strokeWidth: number
+  strokeWidth: number,
+  shadowBlur: number
 }
 
 export interface Logo {
@@ -26,6 +27,9 @@ export const drawLogo = (point: paper.Point, radius: number, settings: LogoSetti
     strokeWidth: settings.strokeWidth,
     strokeColor: settings.stroke,
     fillColor: settings.fill,
+    shadowColor: '#00000026',
+    shadowBlur: settings.shadowBlur,
+    shadowOffset: new paper.Point(6.0, 6.0)
   })
 
   const crestPointA = new paper.Path.Circle({
