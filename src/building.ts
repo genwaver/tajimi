@@ -1,8 +1,11 @@
 import * as paper from 'paper'
 import * as math from 'mathjs'
 import * as patterns from './patterns'
-import _ from 'lodash'
 import chroma from 'chroma-js'
+
+export interface AnimationItem {
+  animationData?: any
+}
 
 export interface Palette {
   backgroundColor: string,
@@ -10,6 +13,7 @@ export interface Palette {
   tileColorA: string
   tileColorB: string
   windowColor: string
+  windowShineColor: string
 }
 
 export interface BuildingSettings extends Palette {
@@ -30,23 +34,27 @@ export interface BuildingSettings extends Palette {
   strokeWidth: number
 }
 
-export interface BuildingTile extends patterns.Tile {
+export interface BuildingTile extends patterns.Tile, AnimationItem {
   currentColor: string
   nextColor: string
 }
 
-export interface BuildingWindow {
+export interface BuildingWindow extends AnimationItem {
   group: paper.Group
-  frame: paper.Path
-  glass: paper.Path,
-  division: paper.Path
+  frame: paper.Shape.Rectangle
+  glass: paper.Shape.Rectangle,
+  shines: Array<paper.Path>
+  division: paper.Path,
+  person: paper.Group,
+  glassFrame: paper.Shape.Rectangle
 }
 
-export interface Building {
+export interface Building  extends AnimationItem{
   group: paper.Group 
   point: paper.Point
   size: paper.Size
-  body: paper.Path
+  body: paper.Shape.Rectangle
+  bodyShadow: paper.Shape.Rectangle
   tiles: Array<BuildingTile>
   windows: Array<BuildingWindow>
 }
@@ -81,7 +89,10 @@ export const drawTiles = (point: paper.Point, size: paper.Size, settings: Buildi
       tiles.push({
         ...tile,
         currentColor: currentColor.hex(),
-        nextColor: nextColor.hex()
+        nextColor: nextColor.hex(),
+        animationData: {
+          prevScale: 0.0
+        }
       })
   })
 
@@ -112,7 +123,7 @@ const drawRandomShine = (point: paper.Point, size: paper.Size, palette: Palette)
     ])
 
     shine.closed = true
-    shine.fillColor = chroma(palette.windowColor).brighten(1.5).hex()
+    shine.fillColor = chroma(palette.windowShineColor).brighten(1.5).hex()
     shines.push(shine)
     currentPosition += offset + dimension
   }
@@ -121,7 +132,7 @@ const drawRandomShine = (point: paper.Point, size: paper.Size, palette: Palette)
 }
 
 export const drawWindow = (point: paper.Point, size: paper.Size, settings: BuildingSettings, options: { divisor: boolean, shine: boolean, person: boolean }): BuildingWindow => {
-  const frame = new paper.Path.Rectangle({
+  const frame = new paper.Shape.Rectangle({
     point: point,
     size: size,
     strokeWidth: settings.strokeWidth,
@@ -142,21 +153,21 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
 
   const glassGroup = new paper.Group()
 
-  const glassMask = new paper.Path.Rectangle({
+  const glassMask = new paper.Shape.Rectangle({
     point: glassPoint,
     size: glassSize.multiply(0.98),
   })
 
   glassMask.clipMask = true
 
-  const glass = new paper.Path.Rectangle({
+  const glass = new paper.Shape.Rectangle({
     point: glassPoint,
     size: glassSize,
     fillColor: settings.windowColor,
     radius: settings.windowRadius
   })
 
-  const glassFrame = new paper.Path.Rectangle({
+  const glassFrame = new paper.Shape.Rectangle({
     point: glassPoint,
     size: glassSize,
     strokeWidth: settings.strokeWidth,
@@ -214,7 +225,10 @@ export const drawWindow = (point: paper.Point, size: paper.Size, settings: Build
     group,
     frame,
     glass,
-    division
+    shines,
+    division,
+    person,
+    glassFrame
   }
 }
 
@@ -271,7 +285,7 @@ export const drawWindowGrid = (start: paper.Point, size: paper.Size, settings: B
 export const drawBuilding = (point: paper.Point, size: paper.Size, settings: BuildingSettings): Building => {
   const tiles = drawTiles(point, size, settings)
 
-  const bodyShadow = new paper.Path.Rectangle({
+  const bodyShadow = new paper.Shape.Rectangle({
     point,
     size,
     fillColor: settings.strokeColor,
@@ -282,7 +296,7 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
     shadowOffset: new paper.Point(0.0, 8.0)
   })
 
-  const body = new paper.Path.Rectangle({
+  const body = new paper.Shape.Rectangle({
     point,
     size,
     strokeColor: settings.strokeColor,
@@ -301,9 +315,11 @@ export const drawBuilding = (point: paper.Point, size: paper.Size, settings: Bui
     group,
     point,
     size,
+    bodyShadow,
     body,
     tiles,
-    windows
+    windows,
+    animationData: {}
   }
 }
 
@@ -356,21 +372,21 @@ export const drawTajimi = (point: paper.Point, size: paper.Size, settings: Build
 
   buildings = buildings.sort((a, b) => a.body.bounds.area - b.body.bounds.area)
 
-  const visibleArea = new paper.Path.Rectangle({
+  const visibleArea = new paper.Shape.Rectangle({
     point: point.add(settings.strokeWidth * 0.5),
     size: size.subtract(settings.strokeWidth * 2.0 * 0.5),
     strokeWidth: settings.strokeWidth,
     radius: 4.0
   })
 
-  const background = new paper.Path.Rectangle({
+  const background = new paper.Shape.Rectangle({
     point,
     size,
     fillColor: settings.backgroundColor,
     radius: 4.0
   })
 
-  const strokeBackground = new paper.Path.Rectangle({
+  const strokeBackground = new paper.Shape.Rectangle({
     point: point.add(settings.strokeWidth),
     size: size.subtract(settings.strokeWidth * 2.0),
     strokeColor: settings.strokeColor,

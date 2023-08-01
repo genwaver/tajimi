@@ -66,7 +66,7 @@ export const drawLogo = (point: paper.Point, radius: number, settings: LogoSetti
 
   const eye = new paper.Path.Circle({
     center: point.subtract([radius * 0.385, radius * 0.415]),
-    radius: radius * 0.0825,
+    radius: radius * 0.075,
     fillColor: settings.stroke
   })
 

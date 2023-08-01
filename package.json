@@ -19,6 +19,7 @@
     "ccapture.js": "^1.1.0",
     "ccapture.js-npmfixed": "^1.1.0",
     "chroma-js": "^2.4.2",
+    "gsap": "^3.12.2",
     "lil-gui": "^0.18.2",
     "mathjs": "^11.8.2",
     "paper": "^0.12.17"

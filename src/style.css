@@ -16,3 +16,47 @@ html, body {
   position: fixed;
   z-index: -999;
 }
+
+.container-buttons {
+	position: absolute;
+	right: 36px;
+	bottom: 36px;
+	flex-flow: column;
+}
+
+.button {
+	margin: 4px 4px;
+	background: #fff;
+  border: 1.5px solid #352D2D;
+	border-radius: 4px;
+  box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;
+  color: #422800;
+  cursor: pointer;
+  display: inline-block;
+	font-family: 'Roboto';
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 16px;
+  line-height: 50px;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+	min-width: 56px;
+}
+
+.button:hover {
+  background-color: #fff;
+}
+
+.button:active {
+  box-shadow: #422800 2px 2px 0 0;
+  transform: translate(2px, 2px);
+}
+
+@media (min-width: 768px) {
+  .button {
+    padding: 0 16px;
+  }
+}

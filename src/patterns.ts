@@ -3,7 +3,7 @@ import * as paper from 'paper'
 export interface Tile {
   point: paper.Point
   size: paper.Size
-  path: paper.Path
+  path: paper.Shape.Rectangle
 }
 
 export interface Grid {
@@ -26,7 +26,7 @@ export const drawGrid = (rows: number, cols: number, point: paper.Point, size: p
       tiles.push({
         point: tilePoint,
         size: tileSize,
-        path: new paper.Path.Rectangle({
+        path: new paper.Shape.Rectangle({
             point: tilePoint,
             size: tileSize,
         })
